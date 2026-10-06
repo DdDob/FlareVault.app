@@ -2718,8 +2718,20 @@ if(window.location.hash === '#waitlist'){
   openView('waitlist');
 } else {
   routeOnboarding();
+}<script>
+function generateQRFromAddress() {
+  const address = document.getElementById("fullAddr").textContent.trim();
+  const holder = document.getElementById("qrHolder");
+
+  if (!address || !holder) return;
+
+  holder.innerHTML = "";
+
+  new QRCode(holder, {
+    text: address,
+    width: 180,
+    height: 180,
+    correctLevel: QRCode.CorrectLevel.M
+  });
 }
 </script>
-<script src="./qrcode.js"></script>
-</body>
-</html>
