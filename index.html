@@ -2735,3 +2735,18 @@ function generateQRFromAddress() {
   });
 }
 </script>
+<script>
+const qrObserver = new MutationObserver(() => {
+  const receive = document.getElementById("tab-receive");
+
+  if (receive && receive.style.display !== "none") {
+    generateQRFromAddress();
+  }
+});
+
+qrObserver.observe(document.body, {
+  attributes: true,
+  subtree: true,
+  attributeFilter: ["style"]
+});
+</script>
