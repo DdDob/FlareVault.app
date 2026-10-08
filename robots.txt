@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://flarevaultapp.xyz/sitemap.xml
