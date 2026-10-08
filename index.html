@@ -1629,6 +1629,7 @@ async function tryAutoReconnect(){
 function disconnectWallet(msg){
   detachWalletListeners();
   akUserOpened = false;
+  try{ sessionStorage.removeItem('fv_ak_open'); }catch(e){}
   if(window.__appkit){ try{ window.__appkit.disconnect(); }catch(e){} }
   endWalletConnectSession();
   wallet = null; provider = null; walletName = '';
@@ -1851,39 +1852,98 @@ function endWalletConnectSession(){
 /* ---------- connect ---------- */
 let connecting = false;
 let akUserOpened = false;
+try{ akUserOpened = sessionStorage.getItem('fv_ak_open') === '1'; }catch(e){}   // survives the browser reloading the page when you come back from the wallet app
 // The wallet popup (Reown AppKit) is a big download. Resolved by the module script at the bottom
 // with the popup, or with null if every source failed. Created here so an early tap can wait for it.
 let __resolveAppkit;
 window.__appkitReady = new Promise(r => { __resolveAppkit = r; });
 window.__resolveAppkit = __resolveAppkit;
+function akNotice(msg){
+  // Visible, longer-lived message (the 2s toast is too easy to miss on a phone).
+  try{
+    let n = document.getElementById('akNotice');
+    if(!n){
+      n = document.createElement('div');
+      n.id = 'akNotice';
+      n.setAttribute('role', 'alert');
+      n.style.cssText = 'position:fixed;left:12px;right:12px;bottom:84px;z-index:2147483000;background:#2a1208;color:#ffd9c7;border:1px solid #ff6a2c;padding:12px 14px;font:14px/1.4 system-ui,sans-serif;border-radius:6px;box-shadow:0 8px 30px rgba(0,0,0,.6)';
+      n.addEventListener('click', () => { n.style.display = 'none'; });
+      document.body.appendChild(n);
+    }
+    n.textContent = String(msg).slice(0, 260) + '  (tap to dismiss)';
+    n.style.display = 'block';
+    clearTimeout(n._t);
+    n._t = setTimeout(() => { n.style.display = 'none'; }, 15000);
+  }catch(e){}
+}
+function akMarkOpened(){ akUserOpened = true; try{ sessionStorage.setItem('fv_ak_open', '1'); }catch(e){} }
+function akClearOpened(){ try{ sessionStorage.removeItem('fv_ak_open'); }catch(e){} }
 async function openConnectSheet(){
-  if(window.__appkit){ akUserOpened = true; clearConnectError(); window.__appkit.open(); return; }
-  // Tapped before the popup finished loading: wait for it (up to 40s) instead of jumping to the fallback.
-  toast('Loading wallet options…');
-  const modal = await Promise.race([window.__appkitReady, new Promise(r => setTimeout(() => r(null), 40000))]);
-  if(modal){ akUserOpened = true; clearConnectError(); modal.open(); return; }
-  console.warn('AppKit did not load' + (window.__appkitError ? ': ' + window.__appkitError : ''));
-  return openWcFallback();
+  let modal = window.__appkit;
+  if(!modal){
+    // Tapped before the popup finished loading: wait for it (up to 40s) instead of jumping to the fallback.
+    toast('Loading wallet options…');
+    modal = await Promise.race([window.__appkitReady, new Promise(r => setTimeout(() => r(null), 40000))]);
+  }
+  if(!modal){
+    console.warn('AppKit did not load' + (window.__appkitError ? ': ' + window.__appkitError : ''));
+    return openWcFallback();
+  }
+  akMarkOpened();
+  clearConnectError();
+  // Already connected inside AppKit but not yet inside the app (e.g. the Flare switch failed earlier):
+  // retry the hand-off instead of reopening the account view, which has no way to retry.
+  let addr = null;
+  try{ addr = modal.getAddress && modal.getAddress(); }catch(e){}
+  if(!wallet && addr){ return onAppKitConnected(modal); }
+  modal.open();
 }
 // Called by the AppKit module below once a wallet is connected (or restored after a refresh).
 let akBusy = false;
+async function akGetProvider(modal){
+  for(let i = 0; i < 10; i++){
+    let p = null;
+    try{ p = modal.getWalletProvider(); }catch(e){}
+    if(p) return p;
+    await new Promise(r => setTimeout(r, 300));
+  }
+  return null;
+}
 async function onAppKitConnected(modal){
   if(akBusy || wallet) return;
   akBusy = true;
   try{
-    const eip = modal.getWalletProvider();
-    if(!eip) return;
-    if(akUserOpened) await ensureFlareNetwork(eip);
-    else if(!isFlareChain(await eip.request({ method: 'eth_chainId' }))) return;   // silent restore: never pop a wallet prompt on page load
+    let eip = await akGetProvider(modal);
+    if(!eip){
+      if(akUserOpened) akNotice('Your wallet connected but the session was not ready. Tap Connect Wallet again.');
+      return;
+    }
+    let onFlare = false;
+    try{ onFlare = isFlareChain(await eip.request({ method: 'eth_chainId' })); }catch(e){}
+    if(!onFlare){
+      if(!akUserOpened) return;                     // silent restore: never pop a wallet prompt on page load
+      toast('Switching your wallet to Flare…');
+      // Let AppKit do the switch first (it also handles wallets that have never seen Flare), then verify.
+      try{ if(window.__flareNet && typeof modal.switchNetwork === 'function') await modal.switchNetwork(window.__flareNet); }
+      catch(e){ console.warn('AppKit switchNetwork failed:', e); }
+      try{ eip = modal.getWalletProvider() || eip; }catch(e){}
+      try{ await ensureFlareNetwork(eip); }
+      catch(e){
+        console.error(e);
+        if(e && e.code === 4001){ akClearOpened(); akNotice('Network switch cancelled in your wallet. Tap Connect Wallet to try again.'); }
+        else akNotice('Your wallet is connected but could not switch to Flare Mainnet (chain ID 14, symbol FLR). Add the Flare network in your wallet, then tap Connect Wallet again.');
+        return;
+      }
+    }
     let name = 'Wallet';
     try{ const wi = modal.getWalletInfo && modal.getWalletInfo(); if(wi && wi.name) name = String(wi.name).slice(0, 40); }catch(e){}
     const ok = await finishConnect({ info: { name, rdns: 'appkit' }, eip });
-    if(ok){ try{ modal.close(); }catch(e){} }
-    else toast('Connected, but Flare network could not be reached. Try again.');
+    if(ok){ akClearOpened(); try{ modal.close(); }catch(e){} }
+    else akNotice('Connected, but the Flare network could not be reached. Check your connection and tap Connect Wallet again.');
   }catch(e){
     console.error(e);
-    if(e && e.code === 4001) toast('Connection cancelled in your wallet.');
-    else toast(String((e && (e.shortMessage || e.message)) || 'Could not connect.').slice(0, 120));
+    if(e && e.code === 4001){ akClearOpened(); akNotice('Connection cancelled in your wallet.'); }
+    else akNotice(String((e && (e.shortMessage || e.message)) || 'Could not connect.').slice(0, 200));
   }finally{
     akBusy = false;
   }
@@ -3324,9 +3384,17 @@ async function loadAppKit(){
       rpcUrls: { default: { http: RPC_ENDPOINTS.slice(0, 3) } },
       blockExplorers: { default: { name: 'Flare Explorer', url: NETWORK.explorer } }
     };
+    // Most wallets don't know Flare, so also offer Ethereum: the session is then always approved,
+    // and the app asks the wallet to switch to Flare afterwards.
+    const mainnet = {
+      id: 1, caipNetworkId: 'eip155:1', chainNamespace: 'eip155', name: 'Ethereum',
+      nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+      rpcUrls: { default: { http: ['https://cloudflare-eth.com'] } },
+      blockExplorers: { default: { name: 'Etherscan', url: 'https://etherscan.io' } }
+    };
     const modal = createAppKit({
       adapters: [new EthersAdapter()],
-      networks: [flare],
+      networks: [flare, mainnet],
       defaultNetwork: flare,
       projectId: WALLETCONNECT_PROJECT_ID,
       metadata: { name: 'Flare Vault', description: 'Self-custody asset vault on Flare', url: window.location.origin, icons: [window.location.origin + '/favicon.ico'] },
@@ -3347,6 +3415,7 @@ async function loadAppKit(){
       themeVariables: { '--w3m-accent': '#ff6a2c', '--w3m-border-radius-master': '2px' }
     });
     window.__appkit = modal;
+    window.__flareNet = flare;
     modal.subscribeAccount(acc => { if(acc && acc.isConnected && acc.address) onAppKitConnected(modal); });
     window.__resolveAppkit(modal);
   }catch(e){
