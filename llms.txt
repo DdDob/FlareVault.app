@@ -1,0 +1,19 @@
+# Flare Vault
+
+> Flare Vault is a non-custodial web app for Flare Mainnet (chain ID 14). Users connect their own wallet; the site never asks for or stores a recovery phrase or private key.
+
+## What it does
+- Shows FLR and Flare-network token balances for the connected wallet
+- Send and receive FLR and tokens
+- View, receive and send NFTs (ERC-721 and ERC-1155 on Flare)
+- Staking and the Legacy Vault (plan how assets pass on)
+
+## Key facts
+- Website: https://www.flarevaultapp.xyz/
+- Network: Flare Mainnet (chain ID 14)
+- Custody: non-custodial; all transactions are signed in the user's own wallet
+- Support: support@flarevaultapp.xyz
+- X: https://x.com/flare_vault
+
+## Notes
+- Not financial advice. Crypto carries risk.
