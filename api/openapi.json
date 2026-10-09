@@ -1,0 +1,61 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Flare Vault public site",
+    "version": "1.0.0",
+    "description": "Public, read-only resources for Flare Vault, a self-custody wallet for the Flare network. Wallet actions happen client-side in the app and are not exposed as an API."
+  },
+  "servers": [{ "url": "https://flarevaultapp.xyz" }],
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Homepage",
+        "description": "Returns HTML by default. Send Accept: text/markdown to receive Markdown.",
+        "responses": {
+          "200": {
+            "description": "Homepage",
+            "content": {
+              "text/html": { "schema": { "type": "string" } },
+              "text/markdown": { "schema": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "/llms.txt": {
+      "get": {
+        "summary": "Agent guide with when-to-use guidance",
+        "responses": {
+          "200": {
+            "description": "Plain text guide",
+            "content": { "text/plain": { "schema": { "type": "string" } } }
+          }
+        }
+      }
+    },
+    "/sitemap.xml": {
+      "get": {
+        "summary": "Sitemap",
+        "responses": {
+          "200": {
+            "description": "XML sitemap",
+            "content": { "application/xml": { "schema": { "type": "string" } } }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": ["error", "message"],
+        "properties": {
+          "error": { "type": "string", "example": "not_found" },
+          "message": { "type": "string", "example": "The requested resource does not exist." },
+          "hint": { "type": "string", "example": "See https://flarevaultapp.xyz/llms.txt" }
+        }
+      }
+    }
+  }
+}
