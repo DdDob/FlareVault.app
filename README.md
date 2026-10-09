@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/logo.jpg" alt="Flare Vault logo: a flame with a keyhole" width="140">
+<img src="assets/logo.jpeg" alt="Flare Vault logo: a flame with a keyhole" width="140">
 
 # Flare Vault
 
