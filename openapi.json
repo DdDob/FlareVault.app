@@ -1,0 +1,363 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Flare Vault public content endpoints",
+    "version": "1.0.0",
+    "description": "Flare Vault is non-custodial software for Flare Mainnet. It has NO account system, API keys or transaction API. This document describes only the public, read-only content endpoints of the website, so people and AI agents can read it reliably. On-chain actions happen through the user's own wallet and the public Legacy Vault V2 contract (see the documentation page).",
+    "contact": {
+      "name": "Flare Vault",
+      "email": "support@flarevaultapp.xyz",
+      "url": "https://www.flarevaultapp.xyz/contact"
+    },
+    "termsOfService": "https://www.flarevaultapp.xyz/terms"
+  },
+  "servers": [
+    {
+      "url": "https://www.flarevaultapp.xyz"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Pages",
+      "description": "Human-readable pages, available as HTML or Markdown."
+    },
+    {
+      "name": "Machine-readable",
+      "description": "Files for crawlers and agents."
+    }
+  ],
+  "externalDocs": {
+    "description": "Flare Vault documentation",
+    "url": "https://www.flarevaultapp.xyz/docs"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "getHomepage",
+        "tags": [
+          "Pages"
+        ],
+        "summary": "Get the homepage",
+        "description": "Returns the Flare Vault homepage: what it is, how Legacy Vault works, fees and contract addresses. Send Accept: text/markdown to receive Markdown.",
+        "responses": {
+          "200": {
+            "description": "The homepage.",
+            "headers": {
+              "Vary": {
+                "description": "Always Accept, because the representation depends on the Accept header.",
+                "schema": {
+                  "type": "string",
+                  "example": "Accept"
+                }
+              }
+            },
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/markdown": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/{page}": {
+      "get": {
+        "operationId": "getPage",
+        "tags": [
+          "Pages"
+        ],
+        "summary": "Get an information page",
+        "description": "Returns one of the information pages (About, Documentation, White Paper, Privacy Policy, Terms of Service, Contact). Send Accept: text/markdown to receive Markdown. Unknown names return a 404 error.",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "path",
+            "required": true,
+            "description": "Page name.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "about",
+                "docs",
+                "whitepaper",
+                "privacy",
+                "terms",
+                "contact"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The requested page.",
+            "headers": {
+              "Vary": {
+                "description": "Always Accept, because the representation depends on the Accept header.",
+                "schema": {
+                  "type": "string",
+                  "example": "Accept"
+                }
+              }
+            },
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/markdown": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such page. HTML by default, Markdown when Accept: text/markdown is sent, JSON when Accept: application/json is sent.",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/markdown": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/{page}.md": {
+      "get": {
+        "operationId": "getPageMarkdown",
+        "tags": [
+          "Pages"
+        ],
+        "summary": "Get an information page as Markdown",
+        "description": "Returns the Markdown version of an information page directly, without needing an Accept header. The homepage is /index.md.",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "path",
+            "required": true,
+            "description": "Page name, or index for the homepage.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "index",
+                "about",
+                "docs",
+                "whitepaper",
+                "privacy",
+                "terms",
+                "contact"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The page as Markdown.",
+            "content": {
+              "text/markdown": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such Markdown file.",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/llms.txt": {
+      "get": {
+        "operationId": "getLlmsTxt",
+        "tags": [
+          "Machine-readable"
+        ],
+        "summary": "Get the llms.txt guide",
+        "description": "A short, structured overview of Flare Vault and links to every page and its Markdown version.",
+        "responses": {
+          "200": {
+            "description": "The guide.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sitemap.xml": {
+      "get": {
+        "operationId": "getSitemap",
+        "tags": [
+          "Machine-readable"
+        ],
+        "summary": "Get the sitemap",
+        "description": "Returns the list of public pages in sitemap format, for crawlers and agents.",
+        "responses": {
+          "200": {
+            "description": "The sitemap.",
+            "content": {
+              "application/xml": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/robots.txt": {
+      "get": {
+        "operationId": "getRobotsTxt",
+        "tags": [
+          "Machine-readable"
+        ],
+        "summary": "Get the crawler rules",
+        "description": "Crawler rules. All agents are allowed.",
+        "responses": {
+          "200": {
+            "description": "The rules.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/.well-known/security.txt": {
+      "get": {
+        "operationId": "getSecurityTxt",
+        "tags": [
+          "Machine-readable"
+        ],
+        "summary": "Get the security contact",
+        "description": "Where to report a security issue (RFC 9116).",
+        "responses": {
+          "200": {
+            "description": "The security policy file.",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "operationId": "getOpenApiDocument",
+        "tags": [
+          "Machine-readable"
+        ],
+        "summary": "Get this OpenAPI document",
+        "description": "Returns this OpenAPI description of the public, read-only content endpoints of the website.",
+        "responses": {
+          "200": {
+            "description": "The OpenAPI document.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "required": [
+              "code",
+              "status",
+              "message",
+              "hint"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "Stable machine-readable code.",
+                "example": "not_found"
+              },
+              "status": {
+                "type": "integer",
+                "description": "HTTP status code.",
+                "example": 404
+              },
+              "message": {
+                "type": "string",
+                "description": "What went wrong.",
+                "example": "No page exists at /nope."
+              },
+              "hint": {
+                "type": "string",
+                "description": "How to resolve it."
+              },
+              "docs": {
+                "type": "string",
+                "format": "uri",
+                "description": "Documentation link."
+              },
+              "pages": {
+                "type": "array",
+                "description": "Valid pages.",
+                "items": {
+                  "type": "string",
+                  "format": "uri"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
